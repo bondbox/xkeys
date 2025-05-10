@@ -1,5 +1,6 @@
 # coding:utf-8
 
+from enum import Enum
 from os import listdir
 from os import makedirs
 from os import system
@@ -14,6 +15,15 @@ from typing import Tuple
 from uuid import uuid4
 
 from xkits_key.attribute import __project__
+
+
+class SSHKeyType(Enum):
+    RSA = "rsa"
+    DSA = "dsa"
+    ECDSA = "ecdsa"
+    ECDSA_SK = "ecdsa-sk"
+    ED25519 = "ed25519"
+    ED25519_SK = "ed25519-sk"
 
 
 class SSHKeys:
