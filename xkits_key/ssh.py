@@ -3,6 +3,7 @@
 from enum import Enum
 from os import listdir
 from os import makedirs
+from os import popen
 from os import system
 from os.path import dirname
 from os.path import exists
@@ -10,6 +11,7 @@ from os.path import isdir
 from os.path import isfile
 from os.path import join
 from typing import Iterator
+from typing import List
 from typing import Optional
 from typing import Tuple
 from uuid import uuid4
@@ -26,43 +28,63 @@ class SSHKeyType(Enum):
     ED25519_SK = "ed25519-sk"
 
 
-class SSHKeys:
-    def __init__(self, base: Optional[str] = None):
-        self.__base: str = base or "."
-
-    def __iter__(self) -> Iterator[str]:
-        for item in listdir(self.base):
-            if isfile(path := join(self.base, item)) and isfile(f"{path}.pub"):
-                yield path
-
-    def __len__(self) -> int:
-        return sum(1 for _ in self)
+class SSHKeyPair:
+    def __init__(self, path: str):
+        self.__private: str = path
+        self.__public: str = f"{path}.pub"
 
     @property
-    def base(self) -> str:
-        return self.__base
+    def private(self) -> str:
+        """Private key file path"""
+        return self.__private
 
-    def generate(self,  # pylint: disable=R0913,R0917
+    @property
+    def public(self) -> str:
+        """Public key file path"""
+        return self.__public
+
+    @property
+    def fingerprint(self) -> str:
+        """Fingerprint of the public key file"""
+        return self.extract(self.public)[1]
+
+    def __bool__(self) -> bool:
+        if isfile(self.private) and isfile(self.public):
+            try:
+                with popen(f"ssh-keygen -y -f {self.private}") as phdl:
+                    private: str = phdl.read().strip()
+                    with open(self.public, encoding="utf-8") as rhdl:
+                        public: str = rhdl.read().strip()
+                        if private == public:
+                            return True
+            except Exception:  # pragma: no cover, pylint: disable=W0718
+                pass  # pragma: no cover
+        return False  # pragma: no cover
+
+    @classmethod
+    def verify(cls, path: str) -> bool:
+        return bool(cls(path))
+
+    @classmethod
+    def extract(cls, keyfile: str) -> Tuple[int, str, str, str]:
+        with popen(f"ssh-keygen -l -f {keyfile}") as phdl:
+            output: List[str] = phdl.read().split()
+            if len(output) != 4:
+                raise ValueError(f"invalid key file: '{keyfile}'")  # noqa:E501, pragma: no cover
+        bits: int = int(output[0])
+        fingerprint: str = output[1].strip()
+        comment: str = output[2].strip()
+        keytype: str = output[3].strip().lstrip("(").rstrip(")")
+        return bits, fingerprint, comment, keytype
+
+    @classmethod
+    def generate(cls,  # pylint: disable=R0913,R0917
                  bits: int = 4096,
                  keytype: str = "rsa",
                  keyfile: Optional[str] = None,
                  comment: Optional[str] = None,
                  passphrase: Optional[str] = None
                  ) -> Tuple[str, str]:
-        return self.keygen(bits=bits,
-                           keytype=keytype,
-                           keyfile=join(self.base, keyfile) if keyfile else self.base,  # noqa:E501
-                           comment=comment,
-                           passphrase=passphrase)
-
-    @classmethod
-    def keygen(cls,  # pylint: disable=R0913,R0917
-               bits: int = 4096,
-               keytype: str = "rsa",
-               keyfile: Optional[str] = None,
-               comment: Optional[str] = None,
-               passphrase: Optional[str] = None
-               ) -> Tuple[str, str]:
         if not keyfile:
             keyfile = str(uuid4())
         if exists(keyfile) and isdir(keyfile):
@@ -82,7 +104,42 @@ class SSHKeys:
         return keyfile, pubfile
 
 
+class SSHKeys:
+    def __init__(self, base: Optional[str] = None):
+        self.__base: str = base or "."
+
+    def __iter__(self) -> Iterator[str]:
+        for item in listdir(self.base):
+            if SSHKeyPair.verify(path := join(self.base, item)):
+                yield path
+
+    def __contains__(self, name: str) -> bool:
+        return SSHKeyPair.verify(join(self.base, name))
+
+    def __len__(self) -> int:
+        return sum(1 for _ in self)
+
+    @property
+    def base(self) -> str:
+        return self.__base
+
+    def generate(self,  # pylint: disable=R0913,R0917
+                 bits: int = 4096,
+                 keytype: str = "rsa",
+                 keyfile: Optional[str] = None,
+                 comment: Optional[str] = None,
+                 passphrase: Optional[str] = None
+                 ) -> Tuple[str, str]:
+        return SSHKeyPair.generate(bits=bits,
+                                   keytype=keytype,
+                                   keyfile=join(self.base, keyfile) if keyfile else self.base,  # noqa:E501
+                                   comment=comment,
+                                   passphrase=passphrase)
+
+
 if __name__ == "__main__":
-    key, pub = SSHKeys.keygen()
-    print(f"keyfile: {key}")
-    print(f"pubfile: {pub}")
+    key, pub = SSHKeyPair.generate()
+    print(f"private key: {key}")
+    print(f"public key:  {pub}")
+    print(SSHKeyPair(key).fingerprint)
+    print(SSHKeyPair.verify(key))
