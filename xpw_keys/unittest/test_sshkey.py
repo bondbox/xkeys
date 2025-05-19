@@ -3,7 +3,7 @@
 from tempfile import TemporaryDirectory
 import unittest
 
-from xkits_key import sshkey
+from xpw_keys import sshkey
 
 
 class TestSSHKeyPair(unittest.TestCase):
