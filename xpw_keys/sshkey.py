@@ -233,7 +233,7 @@ class SSHKeyPair:
         return SSHKeyPair(private, public)
 
 
-class SSHKeys():
+class SSHKeyRing():
     def __init__(self, base: Optional[str] = None):
         self.__cache: CachePool[str, SSHKeyPair] = CachePool(lifetime=0)
         self.__base: str = base or "."

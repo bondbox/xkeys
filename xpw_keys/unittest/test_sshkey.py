@@ -44,7 +44,7 @@ class TestSSHKeyPair(unittest.TestCase):
         self.assertRaises(FileNotFoundError, sshkey.SSHKeyPair.load, "test")
 
 
-class TestSSHKeys(unittest.TestCase):
+class TestSSHKeyRing(unittest.TestCase):
 
     @classmethod
     def setUpClass(cls):
@@ -62,7 +62,7 @@ class TestSSHKeys(unittest.TestCase):
 
     def test_all_in_one(self):
         with TemporaryDirectory() as temp:
-            keys = sshkey.SSHKeys(temp)
+            keys = sshkey.SSHKeyRing(temp)
             self.assertEqual(len(keys), 0)
             self.assertIsInstance(name := keys.generate(), str)
             self.assertIsInstance(item := keys[name], sshkey.SSHKeyPair)
