@@ -32,7 +32,7 @@ build: build-clean build-requirements
 install:
 	pip3 install --force-reinstall --no-deps dist/*.whl
 uninstall:
-	pip3 uninstall -y xkits-key
+	pip3 uninstall -y xkeys
 reinstall: uninstall install
 
 
