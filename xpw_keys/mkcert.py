@@ -113,7 +113,7 @@ class RootCA(Certificate):
 
 class MKCert():
     def __init__(self, base: Optional[str] = None):
-        self.__base = base or dirname(__file__)
+        self.__base: str = base or dirname(__file__)
         self.__root: Optional[RootCA] = None
 
     @property
