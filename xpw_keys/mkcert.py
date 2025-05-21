@@ -34,16 +34,14 @@ class CA():
     @property
     def x509(self):
         if not self.__x509:
-            from OpenSSL import crypto  # pylint:disable=C0415
-            self.__x509 = crypto.load_certificate(crypto.FILETYPE_PEM, self.crt.encode("utf-8"))  # noqa:E501
+            from cryptography import x509  # pylint:disable=C0415
+            self.__x509 = x509.load_pem_x509_certificate(self.crt.encode("utf-8"))  # noqa:E501
         return self.__x509
 
     @property
     def notAfterDays(self) -> int:
         from datetime import datetime  # pylint:disable=C0415
-        assert (timestamp := self.x509.get_notAfter()) is not None
-        date = datetime.strptime(timestamp.decode(), "%Y%m%d%H%M%SZ")
-        return (date - datetime.now()).days - 1
+        return (self.x509.not_valid_after - datetime.now()).days - 1
 
     def dump(self, path: str) -> bool:
         from os.path import abspath  # pylint:disable=C0415
