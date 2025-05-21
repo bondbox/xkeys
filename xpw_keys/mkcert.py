@@ -5,6 +5,7 @@ from os.path import dirname
 from os.path import exists
 from os.path import isfile
 from os.path import join
+from typing import List
 from typing import Optional
 
 
@@ -42,6 +43,15 @@ class CA():
     def notAfterDays(self) -> int:
         from datetime import datetime  # pylint:disable=C0415
         return (self.x509.not_valid_after - datetime.now()).days - 1
+
+    @property
+    def subjectAltName(self):
+        from cryptography.x509.extensions import SubjectAlternativeName  # noqa:E501, pylint:disable=C0415
+        return self.x509.extensions.get_extension_for_class(SubjectAlternativeName).value  # noqa:E501
+
+    @property
+    def general_names(self) -> List[str]:
+        return [str(name.value) for name in self.subjectAltName]
 
     def dump(self, path: str) -> bool:
         from os.path import abspath  # pylint:disable=C0415
@@ -196,4 +206,5 @@ if __name__ == "__main__":
     print((mkcert := MKCert()).rootCA)
     print(cert := mkcert.generate("example.com", "localhost", "127.0.0.1"))
     print(cert.dump("certificate.tar"))
+    print(cert.general_names)
     print(mkcert.reset())

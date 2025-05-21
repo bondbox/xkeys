@@ -67,6 +67,7 @@ class TestMKCert(unittest.TestCase):
         self.assertIsInstance(cert.crt, str)
         self.assertIsInstance(cert.key, str)
         self.assertIsInstance(cert.pem, str)
+        self.assertEqual(cert.general_names, ["example.com", "localhost", "127.0.0.1"])  # noqa:E501
         with TemporaryDirectory() as tmpdir:
             cert.dump(path := mkcert.join(tmpdir, "test", "example"))
             self.assertRaises(FileExistsError, cert.dump, path=path)
