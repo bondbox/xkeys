@@ -8,7 +8,7 @@ from os.path import join
 from typing import Optional
 
 
-class Certificate():
+class CA():
     def __init__(self, cert_file: str, key_file: str):
         with open(cert_file, "r", encoding="utf-8") as rhdl:
             self.__crt: str = rhdl.read().strip()
@@ -81,7 +81,7 @@ class Certificate():
         return isfile(path)
 
     @classmethod
-    def load(cls, path: str) -> "Certificate":
+    def load(cls, path: str) -> "CA":
         if not exists(path) or not isfile(path):
             raise FileNotFoundError(f"cert '{path}' not exists")
 
@@ -94,7 +94,7 @@ class Certificate():
             return cls(cert_file=join(tmpdir, "crt.pem"), key_file=join(tmpdir, "key.pem"))  # noqa:E501
 
 
-class RootCA(Certificate):
+class RootCA(CA):
     def __init__(self, root: str):
         cert_file: str = join(root, "rootCA.pem")
         key_file: str = join(root, "rootCA-key.pem")
@@ -157,7 +157,7 @@ class MKCert():
         self.__root = None
         return not exists(crt_file) and not exists(key_file)
 
-    def generate(self, *names: str) -> Certificate:
+    def generate(self, *names: str) -> CA:
         from os import system  # pylint:disable=import-outside-toplevel
         from tempfile import TemporaryDirectory  # pylint:disable=C0415
 
@@ -165,7 +165,7 @@ class MKCert():
             cert_file: str = join(temp, "crt.pem")
             key_file: str = join(temp, "key.pem")
             system(f"{self.which} -cert-file {cert_file} -key-file {key_file} {' '.join(names)}")  # noqa:E501
-            return Certificate(cert_file=cert_file, key_file=key_file)
+            return CA(cert_file=cert_file, key_file=key_file)
 
     @classmethod
     def download(cls, file: str) -> None:

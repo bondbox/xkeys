@@ -24,7 +24,7 @@ class TestCertificate(unittest.TestCase):
         pass
 
     def test_load(self):
-        self.assertRaises(FileNotFoundError, mkcert.Certificate.load, "test")
+        self.assertRaises(FileNotFoundError, mkcert.CA.load, "test")
 
 
 class TestMKCert(unittest.TestCase):
@@ -59,18 +59,18 @@ class TestMKCert(unittest.TestCase):
 
     def test_rootCA(self):
         self.assertIsInstance(root := self.mkcert.rootCA, mkcert.RootCA)
-        self.assertEqual(str(root), f"Certificate(expire after {root.notAfterDays} days)")  # noqa:E501
+        self.assertEqual(str(root), f"CA(expire after {root.notAfterDays} days)")  # noqa:E501
 
     def test_generate(self):
         cert = self.mkcert.generate("example.com", "localhost", "127.0.0.1")
-        self.assertIsInstance(cert, mkcert.Certificate)
+        self.assertIsInstance(cert, mkcert.CA)
         self.assertIsInstance(cert.crt, str)
         self.assertIsInstance(cert.key, str)
         self.assertIsInstance(cert.pem, str)
         with TemporaryDirectory() as tmpdir:
             cert.dump(path := mkcert.join(tmpdir, "test", "example"))
             self.assertRaises(FileExistsError, cert.dump, path=path)
-            self.assertIsInstance(mkcert.Certificate.load(path), mkcert.Certificate)  # noqa:E501
+            self.assertIsInstance(mkcert.CA.load(path), mkcert.CA)
 
     @mock.patch("urllib.request.urlretrieve", mock.MagicMock())
     def test_download(self):
