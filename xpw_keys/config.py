@@ -91,10 +91,11 @@ class GeneralName:
 class CustomCert:
     ALTNAME: str = "SubjectAlternativeName"
 
-    def __init__(self, path: str, data: Dict[str, Any]):
-        items: List[GeneralName] = [GeneralName.load(i) for i in data.get(self.ALTNAME, [])]   # noqa:E501
+    def __init__(self, certificate: str, config_file: str, config_data: Dict[str, Any]):  # noqa:E501
+        items: List[GeneralName] = [GeneralName.load(i) for i in config_data.get(self.ALTNAME, [])]   # noqa:E501
         self.__names: Dict[str, GeneralName] = {gn.name: gn for gn in items}
-        self.__path: str = abspath(path)
+        self.__config_file: str = abspath(config_file)
+        self.__certificate: str = abspath(certificate)
 
     def __iter__(self) -> Iterator[GeneralName]:
         return iter(self.__names.values())
@@ -112,8 +113,12 @@ class CustomCert:
         return name in self.__names
 
     @property
-    def path(self) -> str:
-        return self.__path
+    def certificate(self) -> str:
+        return self.__certificate
+
+    @property
+    def config_file(self) -> str:
+        return self.__config_file
 
     def lookup(self, name: str) -> GeneralName:
         if name not in self.__names:
@@ -129,42 +134,57 @@ class CustomCert:
         from toml import dumps  # pylint: disable=import-outside-toplevel
         return dumps({self.ALTNAME: [gn.options for gn in self.__names.values()]})  # noqa:E501
 
-    def dumpf(self, path: Optional[str] = None) -> None:
+    def dumpf(self, config_file: Optional[str] = None) -> None:
         from xkits_file import SafeWrite  # pylint: disable=C0415
-        with SafeWrite(path or self.path, encoding="utf-8", truncate=True) as whdl:  # noqa:E501
+        with SafeWrite(config_file or self.config_file, encoding="utf-8", truncate=True) as whdl:  # noqa:E501
             whdl.write(self.dumps())
 
     @classmethod
-    def loadf(cls, path: str) -> "CustomCert":
-        if not exists(path):
-            return cls(path=path, data={})
+    def loadf(cls, cert: str, conf: str, name: str) -> "CustomCert":
+        certificate: str = cls.get_certificate(cert, name)
+
+        if not exists(config_file := cls.get_config_file(conf, name)):
+            return cls(certificate=certificate, config_file=config_file,
+                       config_data={})
 
         from toml import loads  # pylint: disable=import-outside-toplevel
         from xkits_file import SafeRead  # pylint: disable=C0415
 
-        with SafeRead(path, encoding="utf-8") as rhdl:
-            return cls(path=path, data=loads(rhdl.read()))
+        with SafeRead(config_file, encoding="utf-8") as rhdl:
+            return cls(certificate=certificate, config_file=config_file,
+                       config_data=loads(rhdl.read()))
+
+    @classmethod
+    def get_certificate(cls, folder: str, name: str) -> str:
+        return join(folder, f"{name}.tar")
+
+    @classmethod
+    def get_config_file(cls, folder: str, name: str) -> str:
+        return join(folder, f"{name}.toml")
 
 
 class CertConfig:
     DEFAULT_CONFIG: str = "certificates.toml"
+    CERTIFICATE: str = "certificate"
     CUSTOM_CERT: str = "custom_cert"
     GLOBAL_NAME: str = "globals"
 
     def __init__(self, path: str, data: Dict[str, Any]):
-        path = abspath(path)
-        custom_cert: str = data.get(self.CUSTOM_CERT, join(dirname(path), "custom"))  # noqa:E501
+        base: str = abspath(path)
+        certificate: str = data.get(self.CERTIFICATE, join(dirname(base), "backup"))  # noqa:E501
+        custom_cert: str = data.get(self.CUSTOM_CERT, join(dirname(base), "custom"))  # noqa:E501
         global_name: List = data.get(self.GLOBAL_NAME, [])
         makedirs(custom_cert, mode=0o740, exist_ok=True)
 
         self.__global_name: List[str] = global_name
         self.__custom_cert: str = custom_cert
-        self.__path: str = path
+        self.__certificate: str = certificate
+        self.__base: str = base
 
     def __iter__(self) -> Iterator[str]:
         from os import listdir  # pylint: disable=import-outside-toplevel
-        for name in listdir(self.custom_cert):
-            if isfile(self.join(name)):
+        for item in listdir(self.custom_cert):
+            if item.endswith(".toml") and isfile(CustomCert.get_config_file(self.custom_cert, name := item[:-5])):  # noqa:E501
                 yield name
 
     def __len__(self) -> int:
@@ -174,17 +194,14 @@ class CertConfig:
         self.delete_cert(name)
 
     def __getitem__(self, name: str) -> CustomCert:
-        return CustomCert.loadf(self.join(name))
+        return CustomCert.loadf(cert=self.certificate, conf=self.custom_cert, name=name)  # noqa:E501
 
     def __contains__(self, name: str) -> bool:
-        return exists(self.join(name))
-
-    def join(self, name: str) -> str:
-        return join(self.custom_cert, name)
+        return exists(CustomCert.get_config_file(self.custom_cert, name))
 
     @property
-    def path(self) -> str:
-        return self.__path
+    def base(self) -> str:
+        return self.__base
 
     @property
     def global_name(self) -> List[str]:
@@ -194,23 +211,29 @@ class CertConfig:
     def custom_cert(self) -> str:
         return self.__custom_cert
 
+    @property
+    def certificate(self) -> str:
+        return self.__certificate
+
     def create_cert(self, name: str) -> CustomCert:
         assert name not in self, f"name '{name}' already exists"
-        return CustomCert.loadf(self.join(name))
+        return CustomCert.loadf(cert=self.certificate, conf=self.custom_cert, name=name)  # noqa:E501
 
     def delete_cert(self, name: str) -> bool:
         if name in self:
             from os import remove  # pylint: disable=import-outside-toplevel
-            remove(self.join(name))
+            remove(CustomCert.get_config_file(self.custom_cert, name))
         return name not in self
 
     def dumps(self) -> str:
         from toml import dumps  # pylint: disable=import-outside-toplevel
-        return dumps({self.CUSTOM_CERT: self.custom_cert, self.GLOBAL_NAME: self.global_name})  # noqa:E501
+        return dumps({self.CERTIFICATE: self.certificate,
+                      self.CUSTOM_CERT: self.custom_cert,
+                      self.GLOBAL_NAME: self.global_name})
 
     def dumpf(self, path: Optional[str] = None) -> None:
         from xkits_file import SafeWrite  # pylint: disable=C0415
-        with SafeWrite(path or self.path, encoding="utf-8", truncate=True) as whdl:  # noqa:E501
+        with SafeWrite(path or self.base, encoding="utf-8", truncate=True) as whdl:  # noqa:E501
             whdl.write(self.dumps())
 
     @classmethod
@@ -228,5 +251,4 @@ class CertConfig:
 if __name__ == "__main__":
     print(GeneralName.resolve("localhost"))
     print(GeneralName.resolve("127.0.0.1"))
-    CustomCert.loadf("example.toml").dumpf()
     CertConfig.loadf().dumpf()

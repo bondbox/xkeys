@@ -50,20 +50,26 @@ class TestCustomCert(unittest.TestCase):
     def setUpClass(cls):
         cls.name = "example"
         cls.temp = TemporaryDirectory()
-        cls.path = config.join(cls.temp.name, cls.name)
-        config.CustomCert.loadf(cls.path).dumpf()
+        config.makedirs(data := config.join(cls.temp.name, "backup"))
+        config.makedirs(conf := config.join(cls.temp.name, "config"))
+        config.CustomCert.loadf(data, conf, cls.name).dumpf()
+        cls.data: str = data
+        cls.conf: str = conf
 
     @classmethod
     def tearDownClass(cls):
         cls.temp.cleanup()
 
     def setUp(self):
-        self.cert = config.CustomCert.loadf(self.path)
+        self.cert = config.CustomCert.loadf(self.data, self.conf, self.name)
         self.assertIsInstance(self.cert["example.com"], config.GeneralName)
         self.assertIsInstance(self.cert["localhost"], config.GeneralName)
 
     def tearDown(self):
         pass
+
+    def test_certificate(self):
+        self.assertEqual(self.cert.certificate, config.CustomCert.get_certificate(self.data, self.name))  # noqa:E501
 
     def test_delete(self):
         for general_name in self.cert:
