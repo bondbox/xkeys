@@ -46,14 +46,15 @@ class CA():
 
     @property
     def subjectAltName(self):
-        from cryptography.x509.extensions import SubjectAlternativeName  # noqa:E501, pylint:disable=C0415
+        from cryptography.x509.extensions import \
+            SubjectAlternativeName  # pylint:disable=C0415
         return self.x509.extensions.get_extension_for_class(SubjectAlternativeName).value  # noqa:E501
 
     @property
     def general_names(self) -> List[str]:
         return [str(name.value) for name in self.subjectAltName]
 
-    def dump(self, path: str) -> bool:
+    def dump(self, path: str, forced: bool = False) -> bool:
         from os.path import abspath  # pylint:disable=C0415
         path = abspath(path)
 
@@ -61,7 +62,9 @@ class CA():
         makedirs(dirname(path), mode=0o700, exist_ok=True)
 
         if exists(path):
-            raise FileExistsError(f"cert '{path}' already exists")
+            if not forced:
+                raise FileExistsError(f"cert '{path}' already exists")
+            remove(path)
 
         from tempfile import TemporaryDirectory  # pylint:disable=C0415
         with TemporaryDirectory() as tmpdir:
@@ -124,14 +127,20 @@ class MKCert():
         self.__base: str = base or dirname(__file__)
         self.__root: Optional[RootCA] = None
 
+        from os import makedirs  # pylint:disable=import-outside-toplevel
+        makedirs(self.__base, mode=0o700, exist_ok=True)
+
     @property
-    def which(self):
+    def which(self) -> str:
         if not exists(path := join(self.__base, "mkcert")):
             try:
                 self.download(file=path)
             except Exception:  # pylint:disable=broad-exception-caught
-                remove(path)
-        assert exists(path) and isfile(path), f"path '{path}' is not a regular file"  # noqa:E501
+                if exists(path):
+                    remove(path)
+
+        if not exists(path) or not isfile(path):
+            raise FileNotFoundError("mkcert not found")
         return path
 
     @property

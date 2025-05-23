@@ -68,8 +68,8 @@ class TestCustomCert(unittest.TestCase):
     def tearDown(self):
         pass
 
-    def test_certificate(self):
-        self.assertEqual(self.cert.certificate, config.CustomCert.get_certificate(self.data, self.name))  # noqa:E501
+    def test_cached_cert(self):
+        self.assertEqual(self.cert.cached_cert, config.CustomCert.get_cached_cert(self.data, self.name))  # noqa:E501
 
     def test_delete(self):
         for general_name in self.cert:
@@ -90,7 +90,7 @@ class TestCertConfig(unittest.TestCase):
         cls.temp = TemporaryDirectory()
         cls.path = config.join(cls.temp.name, config.CertConfig.DEFAULT_CONFIG)
         (cert := config.CertConfig.loadf(cls.path)).dumpf()
-        cert.create_cert("example").dumpf()
+        cert.lookup_cert("example").dumpf()
 
     @classmethod
     def tearDownClass(cls):

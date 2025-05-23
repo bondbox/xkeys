@@ -49,13 +49,16 @@ class TestMKCert(unittest.TestCase):
     def tearDown(self):
         pass
 
-    @mock.patch.object(mkcert, "exists", mock.MagicMock(side_effect=[False, True]))  # noqa:E501
+    @mock.patch.object(mkcert, "exists", mock.MagicMock(side_effect=[False, True, False]))  # noqa:E501
     @mock.patch.object(mkcert, "isfile", mock.MagicMock(side_effect=[True]))  # noqa:E501
     @mock.patch.object(mkcert, "remove", mock.MagicMock())
     def test_which(self):
         with mock.patch.object(self.mkcert, "download") as mock_download:
+            def which() -> str:
+                return self.mkcert.which
+
             mock_download.side_effect = [Exception("download failed")]
-            self.assertIsInstance(self.mkcert.which, str)
+            self.assertRaises(FileNotFoundError, which)
 
     def test_rootCA(self):
         self.assertIsInstance(root := self.mkcert.rootCA, mkcert.RootCA)

@@ -90,12 +90,14 @@ class GeneralName:
 
 class CustomCert:
     ALTNAME: str = "SubjectAlternativeName"
+    VALIDITY: str = "MinimumValidityDays"
 
-    def __init__(self, certificate: str, config_file: str, config_data: Dict[str, Any]):  # noqa:E501
+    def __init__(self, cached_cert: str, config_file: str, config_data: Dict[str, Any]):  # noqa:E501
         items: List[GeneralName] = [GeneralName.load(i) for i in config_data.get(self.ALTNAME, [])]   # noqa:E501
         self.__names: Dict[str, GeneralName] = {gn.name: gn for gn in items}
+        self.__validity: int = max(30, config_data.get(self.VALIDITY, 90))
         self.__config_file: str = abspath(config_file)
-        self.__certificate: str = abspath(certificate)
+        self.__cached_cert: str = abspath(cached_cert)
 
     def __iter__(self) -> Iterator[GeneralName]:
         return iter(self.__names.values())
@@ -113,12 +115,20 @@ class CustomCert:
         return name in self.__names
 
     @property
-    def certificate(self) -> str:
-        return self.__certificate
+    def cached_cert(self) -> str:
+        return self.__cached_cert
 
     @property
     def config_file(self) -> str:
         return self.__config_file
+
+    @property
+    def validity(self) -> int:
+        return self.__validity
+
+    @validity.setter
+    def validity(self, value: int):
+        self.__validity = max(30, value)
 
     def lookup(self, name: str) -> GeneralName:
         if name not in self.__names:
@@ -132,7 +142,10 @@ class CustomCert:
 
     def dumps(self) -> str:
         from toml import dumps  # pylint: disable=import-outside-toplevel
-        return dumps({self.ALTNAME: [gn.options for gn in self.__names.values()]})  # noqa:E501
+        return dumps({
+            self.ALTNAME: [gn.options for gn in self.__names.values()],
+            self.VALIDITY: self.validity,
+        })
 
     def dumpf(self, config_file: Optional[str] = None) -> None:
         from xkits_file import SafeWrite  # pylint: disable=C0415
@@ -141,21 +154,21 @@ class CustomCert:
 
     @classmethod
     def loadf(cls, cert: str, conf: str, name: str) -> "CustomCert":
-        certificate: str = cls.get_certificate(cert, name)
+        cached_cert: str = cls.get_cached_cert(cert, name)
 
         if not exists(config_file := cls.get_config_file(conf, name)):
-            return cls(certificate=certificate, config_file=config_file,
+            return cls(cached_cert=cached_cert, config_file=config_file,
                        config_data={})
 
         from toml import loads  # pylint: disable=import-outside-toplevel
         from xkits_file import SafeRead  # pylint: disable=C0415
 
         with SafeRead(config_file, encoding="utf-8") as rhdl:
-            return cls(certificate=certificate, config_file=config_file,
+            return cls(cached_cert=cached_cert, config_file=config_file,
                        config_data=loads(rhdl.read()))
 
     @classmethod
-    def get_certificate(cls, folder: str, name: str) -> str:
+    def get_cached_cert(cls, folder: str, name: str) -> str:
         return join(folder, f"{name}.tar")
 
     @classmethod
@@ -165,20 +178,20 @@ class CustomCert:
 
 class CertConfig:
     DEFAULT_CONFIG: str = "certificates.toml"
-    CERTIFICATE: str = "certificate"
+    CACHED_CERT: str = "cached_cert"
     CUSTOM_CERT: str = "custom_cert"
     GLOBAL_NAME: str = "globals"
 
     def __init__(self, path: str, data: Dict[str, Any]):
         base: str = abspath(path)
-        certificate: str = data.get(self.CERTIFICATE, join(dirname(base), "backup"))  # noqa:E501
+        cached_cert: str = data.get(self.CACHED_CERT, join(dirname(base), "cached"))  # noqa:E501
         custom_cert: str = data.get(self.CUSTOM_CERT, join(dirname(base), "custom"))  # noqa:E501
         global_name: List = data.get(self.GLOBAL_NAME, [])
         makedirs(custom_cert, mode=0o740, exist_ok=True)
 
         self.__global_name: List[str] = global_name
         self.__custom_cert: str = custom_cert
-        self.__certificate: str = certificate
+        self.__cached_cert: str = cached_cert
         self.__base: str = base
 
     def __iter__(self) -> Iterator[str]:
@@ -194,7 +207,7 @@ class CertConfig:
         self.delete_cert(name)
 
     def __getitem__(self, name: str) -> CustomCert:
-        return CustomCert.loadf(cert=self.certificate, conf=self.custom_cert, name=name)  # noqa:E501
+        return self.lookup_cert(name)
 
     def __contains__(self, name: str) -> bool:
         return exists(CustomCert.get_config_file(self.custom_cert, name))
@@ -212,22 +225,23 @@ class CertConfig:
         return self.__custom_cert
 
     @property
-    def certificate(self) -> str:
-        return self.__certificate
+    def cached_cert(self) -> str:
+        return self.__cached_cert
 
-    def create_cert(self, name: str) -> CustomCert:
-        assert name not in self, f"name '{name}' already exists"
-        return CustomCert.loadf(cert=self.certificate, conf=self.custom_cert, name=name)  # noqa:E501
+    def lookup_cert(self, name: str) -> CustomCert:
+        return CustomCert.loadf(cert=self.cached_cert, conf=self.custom_cert, name=name)  # noqa:E501
 
     def delete_cert(self, name: str) -> bool:
-        if name in self:
-            from os import remove  # pylint: disable=import-outside-toplevel
-            remove(CustomCert.get_config_file(self.custom_cert, name))
-        return name not in self
+        from os import remove  # pylint: disable=import-outside-toplevel
+        if isfile(cached_cert := CustomCert.get_cached_cert(self.cached_cert, name)):  # noqa:E501
+            remove(cached_cert)
+        if isfile(config_file := CustomCert.get_config_file(self.custom_cert, name)):  # noqa:E501
+            remove(config_file)
+        return not exists(cached_cert) and not exists(config_file)
 
     def dumps(self) -> str:
         from toml import dumps  # pylint: disable=import-outside-toplevel
-        return dumps({self.CERTIFICATE: self.certificate,
+        return dumps({self.CACHED_CERT: self.cached_cert,
                       self.CUSTOM_CERT: self.custom_cert,
                       self.GLOBAL_NAME: self.global_name})
 
