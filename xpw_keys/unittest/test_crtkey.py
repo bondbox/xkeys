@@ -13,6 +13,9 @@ class TestCertificates(unittest.TestCase):
         cls.name = "example"
         cls.temp = TemporaryDirectory()
         cls.keys = crtkey.Certificates(cls.temp.name)
+        if crtkey.exists("mkcert"):
+            from shutil import copy2
+            copy2("mkcert", crtkey.join(cls.keys.config.cached_cert, "mkcert"))
 
     @classmethod
     def tearDownClass(cls):
