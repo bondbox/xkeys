@@ -54,19 +54,22 @@ class SSHKeyPair:
 
     @property
     def bits(self) -> int:
+        """Key length of the SSH key pair"""
         return self.attributes[0]
 
     @property
     def type(self) -> str:
+        """Algorithm of the SSH key pair"""
         return self.attributes[3]
 
     @property
     def fingerprint(self) -> str:
-        """Fingerprint of the public key"""
+        """Fingerprint of the SSH key pair"""
         return self.attributes[1]
 
     @property
     def comment(self) -> str:
+        """Comment of the SSH key pair"""
         return self.attributes[2]
 
     @property
@@ -111,6 +114,7 @@ class SSHKeyPair:
                  comment: Optional[str] = None,
                  passphrase: Optional[str] = None
                  ) -> "SSHKeyPair":
+        """Generate SSH key pair"""
         with TemporaryDirectory() as tmpdir:
             if not comment:
                 comment = f"{__project__}-generate"
@@ -120,12 +124,13 @@ class SSHKeyPair:
 
             keyfile: str = join(tmpdir, __project__)
             if system(f"ssh-keygen -b {bits} -t {type} -f {keyfile} -C {comment} -N {passphrase}") != 0:  # noqa:E501
-                raise RuntimeError("failed to generate ssh key pair")  # noqa:E501, pragma: no cover
+                raise RuntimeError("failed to generate SSH key pair")  # noqa:E501, pragma: no cover
 
             return cls.read(keyfile)
 
     @classmethod
     def extract(cls, public: str) -> Tuple[int, str, str, str]:
+        """Extract attributes from public key"""
         with TemporaryDirectory() as tmpdir:
             with open(path := join(tmpdir, "public"), "w", encoding="utf-8") as whdl:  # noqa:E501
                 whdl.write(f"{public.strip()}\n")
@@ -142,6 +147,7 @@ class SSHKeyPair:
 
     @classmethod
     def parser(cls, private: str) -> str:
+        """Parse public key from private key"""
         with TemporaryDirectory() as tmpdir:
             with open(path := join(tmpdir, "private"), "w", encoding="utf-8") as whdl:  # noqa:E501
                 whdl.write(f"{private.strip()}\n")
@@ -154,11 +160,12 @@ class SSHKeyPair:
                 return public
 
     def dump(self, name: str) -> None:
+        """Dump SSH key pair to a file"""
         if not exists(base := dirname(name)):
             makedirs(base, mode=0o700)
 
         if exists(name):
-            raise FileExistsError(f"sshkey '{name}' already exists")
+            raise FileExistsError(f"SSH key pair '{name}' already exists")
 
         with TemporaryDirectory() as tmpdir:
             with open(attribute := join(tmpdir, "attributes"), "w", encoding="utf-8") as whdl:  # noqa:E501
@@ -191,6 +198,7 @@ class SSHKeyPair:
 
     @classmethod
     def load(cls, name: str) -> "SSHKeyPair":
+        """Load SSH key pair from file"""
         if not exists(name) or not isfile(name):
             raise FileNotFoundError(f"sshkey '{name}' not exists")
 
@@ -217,6 +225,7 @@ class SSHKeyPair:
 
     @classmethod
     def read(cls, keyfile: str) -> "SSHKeyPair":
+        """Read SSH private key (and public key, if it exists)"""
         public: Optional[str] = None
         private: str
 
