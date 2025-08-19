@@ -1,6 +1,5 @@
 # coding:utf-8
 
-from enum import Enum
 from os import chmod
 from os import listdir
 from os import makedirs
@@ -16,6 +15,7 @@ import tarfile
 from tempfile import TemporaryDirectory
 from typing import Iterator
 from typing import List
+from typing import Literal
 from typing import Optional
 from typing import Tuple
 from uuid import uuid4
@@ -24,14 +24,14 @@ from xkits_lib import CachePool
 
 from xpw_keys.attribute import __project__
 
-
-class SSHKeyType(Enum):
-    RSA = "rsa"
-    DSA = "dsa"
-    ECDSA = "ecdsa"
-    ECDSA_SK = "ecdsa-sk"
-    ED25519 = "ed25519"
-    ED25519_SK = "ed25519-sk"
+SSHKeyType = Literal[
+    "rsa",
+    "dsa",
+    "ecdsa",
+    "ecdsa-sk",
+    "ed25519",
+    "ed25519-sk",
+]
 
 
 class SSHKeyPair:
@@ -110,7 +110,7 @@ class SSHKeyPair:
     @classmethod
     def generate(cls,  # pylint: disable=R0913,R0917
                  bits: int = 4096,
-                 type: str = "rsa",  # pylint: disable=redefined-builtin
+                 type: SSHKeyType = "rsa",  # pylint: disable=redefined-builtin
                  comment: Optional[str] = None,
                  passphrase: Optional[str] = None
                  ) -> "SSHKeyPair":
@@ -315,7 +315,7 @@ class SSHKeyRing():
 
     def generate(self,  # pylint: disable=R0913,R0917
                  bits: int = 4096,
-                 type: str = "rsa",  # pylint: disable=redefined-builtin
+                 type: SSHKeyType = "rsa",  # pylint: disable=redefined-builtin
                  name: Optional[str] = None,
                  comment: Optional[str] = None,
                  passphrase: Optional[str] = None
