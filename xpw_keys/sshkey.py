@@ -33,11 +33,13 @@ SSHKeyType = Literal[
     "ed25519-sk",
 ]
 
+SSHAttrType = Tuple[int, str, str, SSHKeyType]
+
 
 class SSHKeyPair:
     def __init__(self, private: str, public: Optional[str] = None,
-                 attributes: Optional[Tuple[int, str, str, str]] = None):
-        self.__attributes: Optional[Tuple[int, str, str, str]] = attributes
+                 attributes: Optional[SSHAttrType] = None):
+        self.__attributes: Optional[SSHAttrType] = attributes
         self.__public: Optional[str] = public.strip() if public else None
         self.__attributes_is_valid: Optional[bool] = None
         self.__public_is_valid: Optional[bool] = None
@@ -58,7 +60,7 @@ class SSHKeyPair:
         return self.attributes[0]
 
     @property
-    def type(self) -> str:
+    def type(self) -> SSHKeyType:
         """Algorithm of the SSH key pair"""
         return self.attributes[3]
 
@@ -73,8 +75,11 @@ class SSHKeyPair:
         return self.attributes[2]
 
     @property
-    def attributes(self) -> Tuple[int, str, str, str]:
-        """The contents of one or more certificate"""
+    def attributes(self) -> SSHAttrType:
+        """The contents of one or more certificate
+
+        Tuple[bits, fingerprint, comment, type]
+        """
         if self.__attributes is None:  # lazy loading
             self.__attributes = self.extract(self.public)
             self.__attributes_is_valid = True
@@ -129,7 +134,7 @@ class SSHKeyPair:
             return cls.read(keyfile)
 
     @classmethod
-    def extract(cls, public: str) -> Tuple[int, str, str, str]:
+    def extract(cls, public: str) -> SSHAttrType:
         """Extract attributes from public key"""
         with TemporaryDirectory() as tmpdir:
             with open(path := join(tmpdir, "public"), "w", encoding="utf-8") as whdl:  # noqa:E501
@@ -142,8 +147,13 @@ class SSHKeyPair:
                 bits: int = int(output[0])
                 fingerprint: str = output[1].strip()
                 comment: str = output[2].strip()
-                keytype: str = output[3].strip().lstrip("(").rstrip(")")
-                return bits, fingerprint, comment, keytype
+                keytype: str = output[3].strip().lstrip("(").rstrip(")").lower()  # noqa:E501
+
+                from typing import cast  # pylint: disable=C0415
+                from typing import get_args  # pylint: disable=C0415
+                if keytype not in get_args(SSHKeyType):
+                    raise ValueError(f"unsupported SSH key type: {keytype}")  # noqa:E501, pragma: no cover
+                return bits, fingerprint, comment, cast(SSHKeyType, keytype)
 
     @classmethod
     def parser(cls, private: str) -> str:
@@ -220,8 +230,12 @@ class SSHKeyPair:
             with open(join(tmpdir, "key"), encoding="utf-8") as rhdl:
                 private = rhdl.read()
 
-            return cls(private=private, public=public,
-                       attributes=(bits, fingerprint, comment, keytype))
+            from typing import cast  # pylint: disable=import-outside-toplevel
+            from typing import get_args  # pylint: disable=C0415
+            if keytype not in get_args(SSHKeyType):
+                raise ValueError(f"unsupported SSH key type: {keytype}")  # noqa:E501, pragma: no cover
+            attributes: SSHAttrType = (bits, fingerprint, comment, cast(SSHKeyType, keytype))  # noqa:E501
+            return cls(private=private, public=public, attributes=attributes)
 
     @classmethod
     def read(cls, keyfile: str) -> "SSHKeyPair":
