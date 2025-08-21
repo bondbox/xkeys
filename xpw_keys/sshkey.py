@@ -24,7 +24,7 @@ from xkits_lib import CachePool
 
 from xpw_keys.attribute import __project__
 
-SSHKeyType = Literal[
+SSHKeyAlgo = Literal[
     "rsa",
     "dsa",
     "ecdsa",
@@ -33,7 +33,7 @@ SSHKeyType = Literal[
     "ed25519-sk",
 ]
 
-SSHAttrType = Tuple[int, str, str, SSHKeyType]
+SSHAttrType = Tuple[int, str, str, SSHKeyAlgo]
 
 
 class SSHKeyPair:
@@ -55,7 +55,7 @@ class SSHKeyPair:
         return self.fingerprint
 
     @property
-    def type(self) -> SSHKeyType:
+    def type(self) -> SSHKeyAlgo:
         """Algorithm of the SSH key pair"""
         return self.attributes[3]
 
@@ -114,7 +114,7 @@ class SSHKeyPair:
 
     @classmethod
     def generate(cls,  # pylint: disable=R0913,R0917
-                 type: SSHKeyType = "rsa",  # pylint: disable=redefined-builtin
+                 type: SSHKeyAlgo = "rsa",  # pylint: disable=redefined-builtin
                  bits: Optional[int] = None,
                  comment: Optional[str] = None,
                  passphrase: Optional[str] = None
@@ -140,7 +140,7 @@ class SSHKeyPair:
                 passphrase = "\"\""
 
             from typing import get_args  # pylint: disable=C0415
-            if type not in get_args(SSHKeyType):
+            if type not in get_args(SSHKeyAlgo):
                 raise ValueError(f"unsupported SSH key type: {type}")
 
             keyfile: str = join(tmpdir, __project__)
@@ -179,9 +179,9 @@ class SSHKeyPair:
 
                 from typing import cast  # pylint: disable=C0415
                 from typing import get_args  # pylint: disable=C0415
-                if keytype not in get_args(SSHKeyType):
+                if keytype not in get_args(SSHKeyAlgo):
                     raise ValueError(f"unsupported SSH key type: {keytype}")  # noqa:E501, pragma: no cover
-                return bits, fingerprint, comment, cast(SSHKeyType, keytype)
+                return bits, fingerprint, comment, cast(SSHKeyAlgo, keytype)
 
     @classmethod
     def parser(cls, private: str) -> str:
@@ -260,9 +260,9 @@ class SSHKeyPair:
 
             from typing import cast  # pylint: disable=import-outside-toplevel
             from typing import get_args  # pylint: disable=C0415
-            if keytype not in get_args(SSHKeyType):
+            if keytype not in get_args(SSHKeyAlgo):
                 raise ValueError(f"unsupported SSH key type: {keytype}")  # noqa:E501, pragma: no cover
-            attributes: SSHAttrType = (bits, fingerprint, comment, cast(SSHKeyType, keytype))  # noqa:E501
+            attributes: SSHAttrType = (bits, fingerprint, comment, cast(SSHKeyAlgo, keytype))  # noqa:E501
             return cls(private=private, public=public, attributes=attributes)
 
     @classmethod
@@ -356,7 +356,7 @@ class SSHKeyRing():
         return index
 
     def generate(self,  # pylint: disable=R0913,R0917
-                 type: SSHKeyType = "rsa",  # pylint: disable=redefined-builtin
+                 type: SSHKeyAlgo = "rsa",  # pylint: disable=redefined-builtin
                  bits: Optional[int] = None,
                  name: Optional[str] = None,
                  comment: Optional[str] = None,
