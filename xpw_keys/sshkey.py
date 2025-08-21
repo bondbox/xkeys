@@ -55,14 +55,14 @@ class SSHKeyPair:
         return self.fingerprint
 
     @property
-    def bits(self) -> int:
-        """Key length of the SSH key pair"""
-        return self.attributes[0]
-
-    @property
     def type(self) -> SSHKeyType:
         """Algorithm of the SSH key pair"""
         return self.attributes[3]
+
+    @property
+    def bits(self) -> int:
+        """Key length of the SSH key pair"""
+        return self.attributes[0]
 
     @property
     def fingerprint(self) -> str:
@@ -114,12 +114,24 @@ class SSHKeyPair:
 
     @classmethod
     def generate(cls,  # pylint: disable=R0913,R0917
-                 bits: int = 4096,
                  type: SSHKeyType = "rsa",  # pylint: disable=redefined-builtin
+                 bits: Optional[int] = None,
                  comment: Optional[str] = None,
                  passphrase: Optional[str] = None
                  ) -> "SSHKeyPair":
-        """Generate SSH key pair"""
+        """Generate SSH key pair
+
+        bits: Specifies the number of bits in the key to create.
+        For RSA keys, the minimum size is 1024 bits and the default is
+        3072 bits. Generally, 3072 bits is considered sufficient.
+        DSA keys must be exactly 1024 bits as specified by FIPS 186-2.
+        For ECDSA keys, the -b flag determines the key length by selecting
+        from one of three elliptic curve sizes: 256, 384 or 521 bits.
+        Attempting to use bit lengths other than these three values for
+        ECDSA keys will fail.
+        ECDSA-SK, Ed25519 and Ed25519-SK keys have a fixed length and the
+        -b flag will be ignored.
+        """
         with TemporaryDirectory() as tmpdir:
             if not comment:
                 comment = f"{__project__}-generate"
@@ -127,8 +139,24 @@ class SSHKeyPair:
             if not passphrase:
                 passphrase = "\"\""
 
+            from typing import get_args  # pylint: disable=C0415
+            if type not in get_args(SSHKeyType):
+                raise ValueError(f"unsupported SSH key type: {type}")
+
             keyfile: str = join(tmpdir, __project__)
-            if system(f"ssh-keygen -b {bits} -t {type} -f {keyfile} -C {comment} -N {passphrase}") != 0:  # noqa:E501
+            command: str = f"ssh-keygen -t {type} -f {keyfile} -C {comment} -N {passphrase}"  # noqa:E501
+
+            if isinstance(bits, int) and type not in ("ecdsa-sk", "ed25519", "ed25519-sk"):  # noqa:E501
+                if type == "rsa":
+                    bits = max(1024, bits)
+                elif type == "dsa":
+                    bits = 1024
+                elif type == "ecdsa":
+                    if bits not in (256, 384, 521):
+                        raise ValueError(f"unsupported ECDSA key length: {bits}")  # noqa:E501
+                command += f" -b {bits}"
+
+            if system(command) != 0:
                 raise RuntimeError("failed to generate SSH key pair")  # noqa:E501, pragma: no cover
 
             return cls.read(keyfile)
@@ -328,13 +356,13 @@ class SSHKeyRing():
         return index
 
     def generate(self,  # pylint: disable=R0913,R0917
-                 bits: int = 4096,
                  type: SSHKeyType = "rsa",  # pylint: disable=redefined-builtin
+                 bits: Optional[int] = None,
                  name: Optional[str] = None,
                  comment: Optional[str] = None,
                  passphrase: Optional[str] = None
                  ) -> str:
-        value = SSHKeyPair.generate(bits=bits, type=type, comment=comment, passphrase=passphrase)  # noqa:E501
+        value = SSHKeyPair.generate(type=type, bits=bits, comment=comment, passphrase=passphrase)  # noqa:E501
         index = name or comment or str(uuid4())
         self.dump(name=index, pair=value)
         return index

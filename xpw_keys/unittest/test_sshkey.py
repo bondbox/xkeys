@@ -22,8 +22,8 @@ class TestSSHKeyPair(unittest.TestCase):
     def tearDown(self):
         pass
 
-    def test_generate(self):
-        item = sshkey.SSHKeyPair.generate()
+    def test_generate_rsa(self):
+        item = sshkey.SSHKeyPair.generate(bits=512)
         self.assertIsInstance(item, sshkey.SSHKeyPair)
         self.assertIsInstance(item.bits, int)
         self.assertIsInstance(item.type, str)
@@ -32,6 +32,25 @@ class TestSSHKeyPair(unittest.TestCase):
         self.assertIsInstance(item.private, str)
         self.assertIsInstance(item.public, str)
         self.assertEqual(str(item), item.fingerprint)
+        self.assertEqual(item.bits, 1024)
+
+    def test_generate_dsa(self):
+        item = sshkey.SSHKeyPair.generate(type="dsa", bits=4096)
+        self.assertIsInstance(item, sshkey.SSHKeyPair)
+        self.assertIsInstance(item.bits, int)
+        self.assertIsInstance(item.type, str)
+        self.assertIsInstance(item.comment, str)
+        self.assertIsInstance(item.fingerprint, str)
+        self.assertIsInstance(item.private, str)
+        self.assertIsInstance(item.public, str)
+        self.assertEqual(str(item), item.fingerprint)
+        self.assertEqual(item.bits, 1024)
+
+    def test_generate_type_error(self):
+        self.assertRaises(ValueError, sshkey.SSHKeyPair.generate, type="RSA")
+
+    def test_generate_ecdsa_bits_error(self):
+        self.assertRaises(ValueError, sshkey.SSHKeyPair.generate, type="ecdsa", bits=128)  # noqa:E501
 
     def test_dump(self):
         item = sshkey.SSHKeyPair.generate()
