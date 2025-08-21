@@ -33,13 +33,13 @@ SSHKeyAlgo = Literal[
     "ed25519-sk",
 ]
 
-SSHAttrType = Tuple[int, str, str, SSHKeyAlgo]
+SSHKeyAttr = Tuple[int, str, str, SSHKeyAlgo]
 
 
 class SSHKeyPair:
     def __init__(self, private: str, public: Optional[str] = None,
-                 attributes: Optional[SSHAttrType] = None):
-        self.__attributes: Optional[SSHAttrType] = attributes
+                 attributes: Optional[SSHKeyAttr] = None):
+        self.__attributes: Optional[SSHKeyAttr] = attributes
         self.__public: Optional[str] = public.strip() if public else None
         self.__attributes_is_valid: Optional[bool] = None
         self.__public_is_valid: Optional[bool] = None
@@ -75,7 +75,7 @@ class SSHKeyPair:
         return self.attributes[2]
 
     @property
-    def attributes(self) -> SSHAttrType:
+    def attributes(self) -> SSHKeyAttr:
         """The contents of one or more certificate
 
         Tuple[bits, fingerprint, comment, type]
@@ -162,7 +162,7 @@ class SSHKeyPair:
             return cls.read(keyfile)
 
     @classmethod
-    def extract(cls, public: str) -> SSHAttrType:
+    def extract(cls, public: str) -> SSHKeyAttr:
         """Extract attributes from public key"""
         with TemporaryDirectory() as tmpdir:
             with open(path := join(tmpdir, "public"), "w", encoding="utf-8") as whdl:  # noqa:E501
@@ -262,7 +262,7 @@ class SSHKeyPair:
             from typing import get_args  # pylint: disable=C0415
             if keytype not in get_args(SSHKeyAlgo):
                 raise ValueError(f"unsupported SSH key type: {keytype}")  # noqa:E501, pragma: no cover
-            attributes: SSHAttrType = (bits, fingerprint, comment, cast(SSHKeyAlgo, keytype))  # noqa:E501
+            attributes: SSHKeyAttr = (bits, fingerprint, comment, cast(SSHKeyAlgo, keytype))  # noqa:E501
             return cls(private=private, public=public, attributes=attributes)
 
     @classmethod
