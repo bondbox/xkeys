@@ -25,8 +25,8 @@ class TestSSHKeyPair(unittest.TestCase):
     def test_generate_rsa(self):
         item = sshkey.SSHKeyPair.generate(bits=512)
         self.assertIsInstance(item, sshkey.SSHKeyPair)
+        self.assertIsInstance(item.algo, str)
         self.assertIsInstance(item.bits, int)
-        self.assertIsInstance(item.type, str)
         self.assertIsInstance(item.comment, str)
         self.assertIsInstance(item.fingerprint, str)
         self.assertIsInstance(item.private, str)
@@ -35,10 +35,10 @@ class TestSSHKeyPair(unittest.TestCase):
         self.assertEqual(item.bits, 1024)
 
     def test_generate_dsa(self):
-        item = sshkey.SSHKeyPair.generate(type="dsa", bits=4096)
+        item = sshkey.SSHKeyPair.generate(algo="dsa", bits=4096)
         self.assertIsInstance(item, sshkey.SSHKeyPair)
+        self.assertIsInstance(item.algo, str)
         self.assertIsInstance(item.bits, int)
-        self.assertIsInstance(item.type, str)
         self.assertIsInstance(item.comment, str)
         self.assertIsInstance(item.fingerprint, str)
         self.assertIsInstance(item.private, str)
@@ -47,10 +47,10 @@ class TestSSHKeyPair(unittest.TestCase):
         self.assertEqual(item.bits, 1024)
 
     def test_generate_type_error(self):
-        self.assertRaises(ValueError, sshkey.SSHKeyPair.generate, type="RSA")
+        self.assertRaises(ValueError, sshkey.SSHKeyPair.generate, algo="RSA")
 
     def test_generate_ecdsa_bits_error(self):
-        self.assertRaises(ValueError, sshkey.SSHKeyPair.generate, type="ecdsa", bits=128)  # noqa:E501
+        self.assertRaises(ValueError, sshkey.SSHKeyPair.generate, algo="ecdsa", bits=128)  # noqa:E501
 
     def test_dump(self):
         item = sshkey.SSHKeyPair.generate()

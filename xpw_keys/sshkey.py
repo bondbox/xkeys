@@ -55,7 +55,7 @@ class SSHKeyPair:
         return self.fingerprint
 
     @property
-    def type(self) -> SSHKeyAlgo:
+    def algo(self) -> SSHKeyAlgo:
         """Algorithm of the SSH key pair"""
         return self.attributes[3]
 
@@ -78,7 +78,7 @@ class SSHKeyPair:
     def attributes(self) -> SSHKeyAttr:
         """The contents of one or more certificate
 
-        Tuple[bits, fingerprint, comment, type]
+        Tuple[bits, fingerprint, comment, algorithm]
         """
         if self.__attributes is None:  # lazy loading
             self.__attributes = self.extract(self.public)
@@ -114,7 +114,7 @@ class SSHKeyPair:
 
     @classmethod
     def generate(cls,  # pylint: disable=R0913,R0917
-                 type: SSHKeyAlgo = "rsa",  # pylint: disable=redefined-builtin
+                 algo: SSHKeyAlgo = "rsa",
                  bits: Optional[int] = None,
                  comment: Optional[str] = None,
                  passphrase: Optional[str] = None
@@ -140,18 +140,18 @@ class SSHKeyPair:
                 passphrase = "\"\""
 
             from typing import get_args  # pylint: disable=C0415
-            if type not in get_args(SSHKeyAlgo):
-                raise ValueError(f"unsupported SSH key type: {type}")
+            if algo not in get_args(SSHKeyAlgo):
+                raise ValueError(f"unsupported SSH key algorithm: {algo}")
 
             keyfile: str = join(tmpdir, __project__)
-            command: str = f"ssh-keygen -t {type} -f {keyfile} -C {comment} -N {passphrase}"  # noqa:E501
+            command: str = f"ssh-keygen -t {algo} -f {keyfile} -C {comment} -N {passphrase}"  # noqa:E501
 
-            if isinstance(bits, int) and type not in ("ecdsa-sk", "ed25519", "ed25519-sk"):  # noqa:E501
-                if type == "rsa":
+            if isinstance(bits, int) and algo not in ("ecdsa-sk", "ed25519", "ed25519-sk"):  # noqa:E501
+                if algo == "rsa":
                     bits = max(1024, bits)
-                elif type == "dsa":
+                elif algo == "dsa":
                     bits = 1024
-                elif type == "ecdsa":
+                elif algo == "ecdsa":
                     if bits not in (256, 384, 521):
                         raise ValueError(f"unsupported ECDSA key length: {bits}")  # noqa:E501
                 command += f" -b {bits}"
@@ -180,7 +180,7 @@ class SSHKeyPair:
                 from typing import cast  # pylint: disable=C0415
                 from typing import get_args  # pylint: disable=C0415
                 if keytype not in get_args(SSHKeyAlgo):
-                    raise ValueError(f"unsupported SSH key type: {keytype}")  # noqa:E501, pragma: no cover
+                    raise ValueError(f"unsupported SSH key algorithm: {keytype}")  # noqa:E501, pragma: no cover
                 return bits, fingerprint, comment, cast(SSHKeyAlgo, keytype)
 
     @classmethod
@@ -209,7 +209,7 @@ class SSHKeyPair:
             with open(attribute := join(tmpdir, "attributes"), "w", encoding="utf-8") as whdl:  # noqa:E501
                 whdl.write(f"{self.fingerprint}\n")
                 whdl.write(f"{self.comment}\n")
-                whdl.write(f"{self.type}\n")
+                whdl.write(f"{self.algo}\n")
                 whdl.write(f"{self.bits}\n")
 
             with open(private := join(tmpdir, "private"), "w", encoding="utf-8") as whdl:  # noqa:E501
@@ -261,7 +261,7 @@ class SSHKeyPair:
             from typing import cast  # pylint: disable=import-outside-toplevel
             from typing import get_args  # pylint: disable=C0415
             if keytype not in get_args(SSHKeyAlgo):
-                raise ValueError(f"unsupported SSH key type: {keytype}")  # noqa:E501, pragma: no cover
+                raise ValueError(f"unsupported SSH key algorithm: {keytype}")  # noqa:E501, pragma: no cover
             attributes: SSHKeyAttr = (bits, fingerprint, comment, cast(SSHKeyAlgo, keytype))  # noqa:E501
             return cls(private=private, public=public, attributes=attributes)
 
@@ -356,13 +356,13 @@ class SSHKeyRing():
         return index
 
     def generate(self,  # pylint: disable=R0913,R0917
-                 type: SSHKeyAlgo = "rsa",  # pylint: disable=redefined-builtin
+                 algo: SSHKeyAlgo = "rsa",
                  bits: Optional[int] = None,
                  name: Optional[str] = None,
                  comment: Optional[str] = None,
                  passphrase: Optional[str] = None
                  ) -> str:
-        value = SSHKeyPair.generate(type=type, bits=bits, comment=comment, passphrase=passphrase)  # noqa:E501
+        value = SSHKeyPair.generate(algo=algo, bits=bits, comment=comment, passphrase=passphrase)  # noqa:E501
         index = name or comment or str(uuid4())
         self.dump(name=index, pair=value)
         return index
