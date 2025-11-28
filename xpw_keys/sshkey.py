@@ -20,7 +20,7 @@ from typing import Optional
 from typing import Tuple
 from uuid import uuid4
 
-from xkits_lib import CachePool
+from xkits_lib.cache import CachePool
 
 from xpw_keys.attribute import __project__
 
