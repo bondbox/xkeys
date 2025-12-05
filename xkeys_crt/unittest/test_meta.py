@@ -1,12 +1,13 @@
 # coding:utf-8
 
 from tempfile import TemporaryDirectory
-import unittest
+from unittest import TestCase
+from unittest import main
 
-from xpw_keys import config
+from xkeys_crt import meta
 
 
-class TestGeneralName(unittest.TestCase):
+class TestGeneralName(TestCase):
 
     @classmethod
     def setUpClass(cls):
@@ -24,11 +25,11 @@ class TestGeneralName(unittest.TestCase):
         pass
 
     def test_resolve(self):
-        self.assertEqual(config.GeneralName.resolve("localhost"), "127.0.0.1")
-        self.assertEqual(config.GeneralName.resolve("127.0.0.1"), "127.0.0.1")
+        self.assertEqual(meta.GeneralName.resolve("localhost"), "127.0.0.1")
+        self.assertEqual(meta.GeneralName.resolve("127.0.0.1"), "127.0.0.1")
 
     def test_load(self):
-        self.assertIsInstance(gn := config.GeneralName.load(self.options), config.GeneralName)  # noqa:E501
+        self.assertIsInstance(gn := meta.GeneralName.load(self.options), meta.GeneralName)  # noqa:E501
         self.assertEqual(str(gn), f"GeneralName({gn.name})")
         self.assertEqual(gn.name, self.generalname)
         self.assertEqual(gn.options, self.options)
@@ -44,15 +45,15 @@ class TestGeneralName(unittest.TestCase):
         self.assertTrue(gn.getaddress)
 
 
-class TestCustomCert(unittest.TestCase):
+class TestCustomCert(TestCase):
 
     @classmethod
     def setUpClass(cls):
         cls.name = "example"
         cls.temp = TemporaryDirectory()
-        config.makedirs(data := config.join(cls.temp.name, "backup"))
-        config.makedirs(conf := config.join(cls.temp.name, "config"))
-        config.CustomCert.loadf(data, conf, cls.name).dumpf()
+        meta.makedirs(data := meta.join(cls.temp.name, "backup"))
+        meta.makedirs(conf := meta.join(cls.temp.name, "config"))
+        meta.CustomCert.loadf(data, conf, cls.name).dumpf()
         cls.data: str = data
         cls.conf: str = conf
 
@@ -61,19 +62,19 @@ class TestCustomCert(unittest.TestCase):
         cls.temp.cleanup()
 
     def setUp(self):
-        self.cert = config.CustomCert.loadf(self.data, self.conf, self.name)
-        self.assertIsInstance(self.cert["example.com"], config.GeneralName)
-        self.assertIsInstance(self.cert["localhost"], config.GeneralName)
+        self.cert = meta.CustomCert.loadf(self.data, self.conf, self.name)
+        self.assertIsInstance(self.cert["example.com"], meta.GeneralName)
+        self.assertIsInstance(self.cert["localhost"], meta.GeneralName)
 
     def tearDown(self):
         pass
 
     def test_cached_cert(self):
-        self.assertEqual(self.cert.cached_cert, config.CustomCert.get_cached_cert(self.data, self.name))  # noqa:E501
+        self.assertEqual(self.cert.cached_cert, meta.CustomCert.get_cached_cert(self.data, self.name))  # noqa:E501
 
     def test_delete(self):
         for general_name in self.cert:
-            self.assertIsInstance(general_name, config.GeneralName)
+            self.assertIsInstance(general_name, meta.GeneralName)
         self.assertIn("example.com", self.cert)
         self.assertIn("localhost", self.cert)
         self.assertEqual(len(self.cert), 2)
@@ -83,13 +84,13 @@ class TestCustomCert(unittest.TestCase):
         self.assertEqual(len(self.cert), 0)
 
 
-class TestCertConfig(unittest.TestCase):
+class TestCertConfig(TestCase):
 
     @classmethod
     def setUpClass(cls):
         cls.temp = TemporaryDirectory()
-        cls.path = config.join(cls.temp.name, config.CertConfig.DEFAULT_CONFIG)
-        (cert := config.CertConfig.loadf(cls.path)).dumpf()
+        cls.path = meta.join(cls.temp.name, meta.CertConfig.DEFAULT_CONFIG)
+        (cert := meta.CertConfig.loadf(cls.path)).dumpf()
         cert.lookup_cert("example").dumpf()
 
     @classmethod
@@ -97,7 +98,7 @@ class TestCertConfig(unittest.TestCase):
         cls.temp.cleanup()
 
     def setUp(self):
-        self.cert = config.CertConfig.loadf(self.path)
+        self.cert = meta.CertConfig.loadf(self.path)
 
     def tearDown(self):
         pass
@@ -107,10 +108,10 @@ class TestCertConfig(unittest.TestCase):
             self.assertEqual(name, "example")
         self.assertIn("example", self.cert)
         self.assertEqual(len(self.cert), 1)
-        self.assertIsInstance(self.cert["example"], config.CustomCert)
+        self.assertIsInstance(self.cert["example"], meta.CustomCert)
         del self.cert["example"]
         self.assertNotIn("example", self.cert)
 
 
 if __name__ == "__main__":
-    unittest.main()
+    main()

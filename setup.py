@@ -8,12 +8,12 @@ from setuptools import find_packages
 from setuptools import setup
 from setuptools.command.install import install
 
-from xpw_keys.attribute import __author__
-from xpw_keys.attribute import __author_email__
-from xpw_keys.attribute import __description__
-from xpw_keys.attribute import __project__
-from xpw_keys.attribute import __urlhome__
-from xpw_keys.attribute import __version__
+from xkeys_attr import __author__
+from xkeys_attr import __author_email__
+from xkeys_attr import __description__
+from xkeys_attr import __project__
+from xkeys_attr import __urlhome__
+from xkeys_attr import __version__
 
 __urlcode__ = __urlhome__
 __urldocs__ = __urlhome__
@@ -48,7 +48,10 @@ setup(
     project_urls={"Source Code": __urlcode__,
                   "Bug Tracker": __urlbugs__,
                   "Documentation": __urldocs__},
-    packages=find_packages(include=["xpw_keys*"], exclude=["xpw_keys.unittest"]),  # noqa:E501
+    packages=find_packages(
+        include=["xkeys_attr*", "xkeys_crt*", "xkeys_ssh*"],
+        exclude=["xkeys_crt.unittest", "xkeys_ssh.unittest"]
+    ),
     install_requires=all_requirements(),
     cmdclass={
         "install": CustomInstallCommand,

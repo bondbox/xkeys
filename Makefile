@@ -46,12 +46,12 @@ reinstall: uninstall install
 test-prepare:
 	python3 -m pip install --upgrade mock pylint flake8 pytest pytest-cov
 pylint:
-	pylint $(shell git ls-files xpw_keys/*.py)
+	pylint $(shell git ls-files xkeys_attr/*.py xkeys_crt/*.py xkeys_ssh/*.py)
 flake8:
-	flake8 xpw_keys --count --select=E9,F63,F7,F82 --show-source --statistics
-	flake8 xpw_keys --count --exit-zero --max-complexity=10 --max-line-length=127 --statistics
+	flake8 xkeys_attr xkeys_crt xkeys_ssh --count --select=E9,F63,F7,F82 --show-source --statistics
+	flake8 xkeys_attr xkeys_crt xkeys_ssh --count --exit-zero --max-complexity=10 --max-line-length=127 --statistics
 pytest:
-	pytest --cov=xpw_keys --cov-report=term-missing --cov-report=xml --cov-report=html --cov-config=.coveragerc --cov-fail-under=100
+	pytest --cov=xkeys_attr --cov=xkeys_crt --cov=xkeys_ssh --cov-report=term-missing --cov-report=xml --cov-report=html --cov-config=.coveragerc --cov-fail-under=100
 pytest-clean:
 	rm -rf .pytest_cache
 test: test-prepare pylint flake8 pytest

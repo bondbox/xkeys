@@ -6,12 +6,12 @@ from os.path import isfile
 from os.path import join
 from typing import Optional
 
-from xpw_keys.config import CertConfig
-from xpw_keys.config import CustomCert
-from xpw_keys.config import GeneralName
-from xpw_keys.mkcert import CA
-from xpw_keys.mkcert import MKCert
-from xpw_keys.mkcert import RootCA
+from xkeys_crt.make import CA
+from xkeys_crt.make import MKCert
+from xkeys_crt.make import RootCA
+from xkeys_crt.meta import CertConfig
+from xkeys_crt.meta import CustomCert
+from xkeys_crt.meta import GeneralName
 
 
 class Certificate:
