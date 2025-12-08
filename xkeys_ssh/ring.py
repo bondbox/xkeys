@@ -48,6 +48,9 @@ class SSHKeyRing():
         return join(self.base, f"{name}.tar")
 
     def dump(self, name: str, pair: SSHKeyPair) -> SSHKeyPair:
+        if any(self[key].fingerprint == pair.fingerprint for key in self):
+            raise FileExistsError("SSH key fingerprint already exists")
+
         pair.dump(self.join(name))
         self.__cache.put(name, pair)
         return self.__cache.get(name)
@@ -74,7 +77,11 @@ class SSHKeyRing():
         if not self.rename(origin=name, target=(backup := f"{name}.old")):
             raise ValueError(f"failed to create '{name}' backup")  # noqa:E501, pragma: no cover
 
-        self.create(private=private, name=name)
+        try:
+            self.create(private=private, name=name)
+        except Exception:
+            self.rename(origin=backup, target=name)
+            raise
 
         if not self.remove(name=backup):
             raise ValueError(f"failed to delete '{name}' backup")  # noqa:E501, pragma: no cover
