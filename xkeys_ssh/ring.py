@@ -52,7 +52,7 @@ class SSHKeyRing():
 
     def dump(self, name: str, pair: SSHKeyPair) -> SSHKeyPair:
         if (key := self.seek(pair.fingerprint)) is not None:
-            raise FileExistsError(f"SSH key pair '{key}' already exists")
+            raise FileExistsError(f"Same fingerprint as SSH key pair '{key}'")
 
         pair.dump(self.join(name))
         self.__cache.put(name, pair)
