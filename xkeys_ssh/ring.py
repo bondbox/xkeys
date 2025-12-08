@@ -47,9 +47,12 @@ class SSHKeyRing():
     def join(self, name: str) -> str:
         return join(self.base, f"{name}.tar")
 
+    def seek(self, fingerprint: str) -> Optional[str]:
+        return next((key for key in self if self[key].fingerprint == fingerprint), None)  # noqa:E501
+
     def dump(self, name: str, pair: SSHKeyPair) -> SSHKeyPair:
-        if any(self[key].fingerprint == pair.fingerprint for key in self):
-            raise FileExistsError("SSH key fingerprint already exists")
+        if (key := self.seek(pair.fingerprint)) is not None:
+            raise FileExistsError(f"SSH key pair '{key}' already exists")
 
         pair.dump(self.join(name))
         self.__cache.put(name, pair)
